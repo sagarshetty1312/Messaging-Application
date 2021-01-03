@@ -1,0 +1,46 @@
+{% extends "layout.html" %}
+{% block title %}
+    Create username
+{% endblock %}
+
+{% block script %}
+    <script>
+        function check(selectObj){
+            const username = selectObj.value;
+            console.log(username);
+            const request = new XMLHttpRequest();
+            request.open('POST', '/checkusername');
+            request.onload = () => {
+                const data = JSON.parse(request.responseText);
+                if(data.availabe){
+                    document.querySelector("#sub").disabled=false;
+                    document.querySelector('#message').innerHTML="Username available.";
+                }else{
+                    document.querySelector("#sub").disabled=true;
+                    document.querySelector("#message").innerHTML="Username not available.";
+                }
+            }
+            const data = new FormData();
+            data.append("username",username);
+            request.send(data);
+            return false;
+        }
+        document.addEventListener('DOMContentLoaded', () =>{
+            const username = localStorage.getItem('username');
+            if(!username){
+               
+            }else{
+                console.log("Existing user");
+                location.replace('/');
+            }
+        });
+    </script>
+{% endblock %}
+
+{% block body %}
+    <form action={{url_for('index') }} method="POST">
+        <input onkeyup="check(this)" type="text" placeholder="Type username:" name="username">
+        <input id="sub" type="submit" value="Submit" disabled="true">
+    </form>
+    <legend id="message"></legend>
+{% endblock %}

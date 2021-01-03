@@ -1,0 +1,36 @@
+{% extends "layout.html" %}
+{% block title %}
+    Create username
+{% endblock %}
+
+{% block script %}
+    <script>
+        function check(selectObj){
+            const cname = selectObj.value;
+            const request = new XMLHttpRequest();
+            request.open('POST', '/checkcname');
+            request.onload = () => {
+                const data = JSON.parse(request.responseText);
+                if(data.availabe){
+                    document.querySelector("#sub").disabled=false;
+                    document.querySelector('#message').innerHTML="Channel name available.";
+                }else{
+                    document.querySelector("#sub").disabled=true;
+                    document.querySelector("#message").innerHTML="Channel name not available.";
+                }
+            }
+            const data = new FormData();
+            data.append("cname",cname);
+            request.send(data);
+            return false;
+        }
+    </script>
+{% endblock %}
+
+{% block body %}
+    <form action={{url_for('index') }} method="POST">
+        <input onkeyup="check(this)" type="text" placeholder="Type channelname:" name="channelname">
+        <input id="sub" type="submit" value="Submit" disabled="true">
+    </form>
+    <legend id="message"></legend>
+{% endblock %}

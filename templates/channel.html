@@ -1,0 +1,178 @@
+{% extends "layout.html" %}
+{% block title %}
+    Channel {{ channelname }}
+{% endblock %}
+
+{% block script %}
+    <style>
+        @keyframes delete {
+            0% {
+                opacity: 1;
+                height: 100%;
+                line-height: 100%;
+                padding: 10px;
+                margin-bottom: 10px;
+            }
+            75% {
+                opacity: 0;
+                height: 100%;
+                line-height: 100%;
+                padding: 10px;
+                margin-bottom: 10px;
+            }
+            100% {
+                opacity: 0;
+                height: 0%;
+                line-height: 0%;
+                padding: 0px;
+                margin-bottom: 0px;
+            }
+        }
+
+        .message {
+            background-color: darkslategray;
+            margin: 10px;
+            padding: 10px;
+            color: aliceblue;
+            animation-name: delete;
+            animation-duration: 2s;
+            animation-fill-mode: forwards;
+            animation-play-state: paused;
+        }
+        .thisuser:hover {
+            width: 30%;
+        }
+    </style>
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.6/socket.io.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.0.11/handlebars.min.js"></script>
+    <script id="message" type="text/template">
+        <div class="container row message">
+            {% raw %}
+                <div class="col-md-3 col-sm-12 sender">
+                    {{ sender }}:
+                </div>
+                <div class="col-md-6  col-sm-12">
+                    {{ message }}
+                </div>
+                <div class="col-md-1  col-sm-6 time">
+                    {{ time }}
+                </div>
+                <div class="col-md-1  col-sm-6">
+                    <img class={{ userflag }} data-id={{ id }} src={{ deleteimg }} alt="delete" />
+                </div>
+            {% endraw %}
+        </div>
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            //Add all messages
+            request = new XMLHttpRequest();
+            request.open('POST', '/messages');
+            request.onload = () => {
+                const data = JSON.parse(request.responseText);
+                data.forEach(add_message);
+            };
+            const data = new FormData();
+            data.append('channel',"{{ channelname }}");
+            request.send(data);
+
+            //Connect to websocket
+            var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+            
+            //When connected configure buttons
+            socket.on('connect', () => {
+                //button click emits new message
+                document.querySelector('#send').onclick = send_message;
+                document.querySelectorAll('.thisuser').forEach(img => {
+                    img.onclick = () => {
+                        var id = img.dataset.id;
+                        delete_animation(img);
+                        socket.emit('delete message',{'channel':'{{channelname}}','id':id});
+                    };
+                });
+            });
+
+            function delete_animation(element){
+                element.parentElement.parentElement.style.animationPlayState = 'running';
+                element.parentElement.parentElement.addEventListener('animationend', () => {
+                    element.parentElement.parentElement.remove();
+                });
+            }
+            
+            //sends emit to server with new message
+            function send_message(){
+                var messagebox = document.getElementById("messagebox");
+                const message = messagebox.value;
+                messagebox.value='';
+                const sender = localStorage.getItem("username");
+                socket.emit('send message',{'message': message, 'sender':sender, 'channel':'{{channelname}}'});
+            }
+
+            //when new message is received add to the list
+            socket.on('new message', data => {
+                if(data.channel == '{{channelname}}'){
+                    add_message(data.message);
+                }
+            });
+
+            socket.on('message deleted',data => {
+                if(data.channel == '{{channelname}}'){
+                    id = data.id;
+                    document.querySelectorAll('.otheruser').forEach(img => {
+                        if(img.dataset.id == id){
+                            delete_animation(img);
+                        }
+                    });
+                }
+            });
+        });
+
+        //Add new message with given contents to DOM
+        const message_template = Handlebars.compile(document.querySelector('#message').innerHTML);
+        function add_message(contents){
+            const userflag = contents["sender"]==localStorage.getItem('username') ? "thisuser" : "otheruser";
+            const deleteimg = contents["sender"]==localStorage.getItem('username') ? 
+                "https://img.icons8.com/cotton/16/000000/delete-sign--v2.png":
+                "//img.icons8.com/cotton/16/000000/delete-sign--v1.png";
+            const text = message_template({
+                'message' :contents["message"], 
+                'sender' :contents["sender"], 
+                'time' :contents["time"],
+                'id' :contents["id"],
+                'userflag' : userflag,
+                'deleteimg' : deleteimg
+            });
+            document.querySelector('#messages').innerHTML += text;
+            /*document.querySelectorAll('.thisuser').forEach(img => {
+                img.onclick = () => {
+                    console.log("good?");
+                    img.parentElement.parentElement.style.animationPlayState = 'running';
+                    img.parentElement.parentElement.addEventListener('animationend', () => {
+                        img.parentElement.parentElement.remove();
+                    });
+                };
+            });*/
+            scroll();
+        }
+
+        function scroll(){
+            window.scrollTo = document.body.offsetHeight;
+        }
+
+        function clearchannel(){
+            localStorage.removeItem("channel");
+        }
+    </script>
+{% endblock %}
+
+{% block body %}
+    <a href="{{ url_for('index') }}" onclick=clearchannel()>Home</a>
+    <div id="messages"></div>
+    <form class="input-group" onsubmit="return false;">
+        <input type="text" id="messagebox" class="form-control" name="newmessage" placeholder="Type message...">
+        <div class="input-group-append">
+            <input class="btn btn-outline-secondary" type="button" value="SEND" id="send">
+        </div>
+    </form>
+{% endblock %}

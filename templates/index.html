@@ -1,0 +1,82 @@
+{% extends "layout.html" %}
+{% block title %}
+    Create username
+{% endblock %}
+
+{% block script %}
+    <script id="login" type="text/template">
+        {% raw %}
+            <h2>hello, {{ username }} </h2>
+        {% endraw %}
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () =>{
+            if('{{username}}'!= 'None'){
+                localStorage.setItem('username','{{username}}');
+            }
+            const username = localStorage.getItem('username');
+            if(!username){
+               location.replace('register');
+            }else{
+                const template = Handlebars.compile(document.querySelector('#login').innerHTML);
+                const content = template({ 'username': username });
+                document.querySelector('#user').innerHTML = content;
+            }
+            const channel = localStorage.getItem('channel');
+            if(channel){
+                const request = new XMLHttpRequest();
+                request.open('POST', '/checkcname');
+                request.onload = () => {
+                    const data = JSON.parse(request.responseText);
+                    if(data.availabe){
+                        localStorage.removeItem("channel");
+                    }else{
+                        location.replace('/channel/'+channel);
+                    }
+                }
+                const data = new FormData();
+                data.append("cname",channel);
+                request.send(data);
+                
+            }
+        });
+
+        function save(obj){
+            localStorage.setItem("channel",obj);
+        }
+    </script>
+    <style>
+        nav {
+            max-height: 550px;
+            width: 100%;
+            overflow: hidden;
+            overflow-y: scroll;
+        }
+    </style>
+
+{% endblock %}
+
+{% block body %}
+    <div id="user"></div>
+    <div class="container">
+        <div class="row">
+            <div class="col">
+                <nav class="navbar navbar-default" role="navigation">
+                    <div class="navbar-header">
+                        <b>Channels</b>
+                    </div>
+                    <ul class="navbar-nav">
+                        {% for channel in channelnames %}
+                            <li class="nav-item"><a href="{{url_for('channel', channelname=channel )}}" onclick=save('{{channel}}')>{{ channel }}</a></li>
+                        {% endfor %}
+                        {% for channel in channelnames %}
+                            <li class="nav-item"><a href="#" onclick=save('{{channel}}')>{{ channel }}</a></li>
+                        {% endfor %}
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+    
+    <a href="createchannel">Create a new channel</a>
+{% endblock %}
